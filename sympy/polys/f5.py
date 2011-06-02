@@ -7,6 +7,8 @@ Labeled Polynomial = (signature, polynomial, number) where polynomial is a sdp, 
 
 """
 
+# critical pairs are tuples containing f, g, the term u, v with which f, g is to be multiplied, lm(u * f), lm(v * g), Sign(u * f), Sign(v * g). f and g are references to polynomials somewhere in memory and the rest is relatively cheap to store
+
 from sympy.polys.groebnertools import *
 
 # convenience functions
@@ -136,30 +138,80 @@ def critical_pair(f, g, u, O, K):
     um = term_div(lt, ltf, K)
     vm = term_div(lt, ltg, K)
 
-    fr = lbp_mul_term(f, um, u, O, K)
-    gr = lbp_mul_term(g, vm, u, O, K)
+    #fr = lbp_mul_term(f, um, u, O, K)
+    #gr = lbp_mul_term(g, vm, u, O, K)
 
-    if lbp_cmp(fr, gr, O) == -1:
-        return (gr, fr)
+    #if lbp_cmp(fr, gr, O) == -1:
+    #    return (vm, g, um, f)
+    #else:
+    #    return (um, f, vm, g)
+    
+    # (Sign(u * f), lm(u * f), u, f, same for g)
+    sigf = sig_mult(Sign(f), um[0])
+    sigg = sig_mult(Sign(g), vm[0])
+
+    lmuf = monomial_mul(sdp_LM(Polyn(f), u), um[0])
+    lmvg = monomial_mul(sdp_LM(Polyn(g), u), vm[0])
+
+    if lbp_cmp(lbp(sigf, [], Num(f)), lbp(sigg, [], Num(g)), O) == -1:
+        return (sigf, lmuf, um, f, sigg, lmvg, vm, g)
     else:
-        return (fr, gr)
+        return (sigg, lmvg, vm, g, sigf, lmuf, um, f)
 
-def cp_cmp(c, d, O):
-    if lbp_cmp(c[0], d[0], O) == -1:
+
+def cp_cmp(c, d, u, O, K):
+    #cf = lbp(Sign(c[1]), [sdp_LT(Polyn(c[1]), u, K)], Num(c[1]))
+    #df = lbp(Sign(d[1]), [sdp_LT(Polyn(d[1]), u, K)], Num(d[1]))
+
+    #cf = lbp_mul_term(cf, c[0], u, O, K)
+    #df = lbp_mul_term(df, d[0], u, O, K)
+
+    r = lbp_cmp(lbp(c[0], [], Num(c[3])), lbp(d[0], [], Num(d[3])), O)
+
+    if r == -1:
         return -1
-    if lbp_cmp(c[0], d[0], O) == 0:
-        if lbp_cmp(c[1], d[1], O) == -1:
+    if r == 0:
+        #cg = lbp(Sign(c[3]), [sdp_LT(Polyn(c[3]), u, K)], Num(c[3]))
+        #dg = lbp(Sign(d[3]), [sdp_LT(Polyn(d[3]), u, K)], Num(d[3]))
+        
+        #cg = lbp_mul_term(cg, c[2], u, O, K)
+        #dg = lbp_mul_term(dg, d[2], u, O, K)
+
+        r = lbp_cmp(lbp(c[4], [], Num(c[7])), lbp(d[4], [], Num(d[7])), O)
+    
+        if r == -1:
             return -1
-        if lbp_cmp(c[1], d[1], O) == 0:
+        if r == 0:
             return 0
     return 1
 
 def s_poly(cp, u, O, K):
-    return lbp_sub(cp[0], cp[1], u, O, K)
+    """
+    ltf = sdp_LT(Polyn(f), u, K)
+    ltg = sdp_LT(Polyn(g), u, K)
+    lt = (monomial_lcm(ltf[0], ltg[0]), K.one)
 
+    if K.has_Field:
+        term_div = _term_ff_div
+    else:
+        term_div = _term_rr_div
 
+    um = term_div(lt, ltf, K)
+    vm = term_div(lt, ltg, K)
+    """
 
+    #fr = lbp_mul_term(cp[1], cp[0], u, O, K)
+    #gr = lbp_mul_term(cp[3], cp[2], u, O, K)
 
+    #if lbp_cmp(fr, gr, O) == -1:
+    #    return lbp_sub(gr, fr, u, O, K)
+    #else:
+    #    return lbp_sub(fr, gr, u, O, K)
+
+    fr = lbp_mul_term(cp[3], cp[2], u, O, K)
+    gr = lbp_mul_term(cp[7], cp[6], u, O, K)
+
+    return lbp_sub(fr, gr, u, O, K)
 
 def is_comparable(f, B, u, K):
     for g in B:
@@ -185,10 +237,36 @@ def is_rewritable_or_comparable(f, B, u, K):
             if Num(f) < Num(g):
                 if monomial_div(Sign(f)[0], Sign(g)[0]) is not None:
                     return True
+        #else: # !!! ONLY WORKS IF B IS SORTED WRT Sign(...) !!!
+        #    break
     return False
+
+def cp_is_rewritable_or_comparable(cp, B, u, K):
+    #smf = monomial_mul(cp[0][0], Sign(cp[1])[0])
+    #smg = monomial_mul(cp[2][0], Sign(cp[3])[0])
+    smf = cp[0]
+    smg = cp[4]
+
+    for h in B:
+        if smf[1] < Sign(h)[1]:
+            if monomial_div(smf[0], sdp_LM(Polyn(h), u)) is not None:
+                return True
+        if smg[1] < Sign(h)[1]:
+            if monomial_div(smg[0], sdp_LM(Polyn(h), u)) is not None:
+                return True
+
+        if smf[1] == Sign(h)[1]:
+            if Num(cp[3]) < Num(h):
+                if monomial_div(smf[0], Sign(h)[0]) is not None:
+                    return True
+        if smg[1] == Sign(h)[1]:
+            if Num(cp[7]) < Num(h):
+                if monomial_div(smg[0], Sign(h)[0]) is not None:
+                    return True
+    return False                               
             
 
-def f5_single_reduction(f, B, u, O, K):
+def f5_reduce(f, B, u, O, K):
     if Polyn(f) == []:
         return f
 
@@ -197,27 +275,20 @@ def f5_single_reduction(f, B, u, O, K):
     else:
         term_div = _term_rr_div
 
-    for g in B:
-        if Polyn(g) != []:
-            t = term_div(sdp_LT(Polyn(f), u, K), sdp_LT(Polyn(g), u, K), K)
-            if t is not None:
-                gp = lbp_mul_term(g, t, u, O, K)
-                if sig_cmp(Sign(gp), Sign(f), O) == -1:
-                    #if not is_comparable(gp, B, u, K):
-                    #    if not is_rewritable(gp, B, u, K):
-                    #if not is_rewritable_or_comparable(gp, B, u, K):
-                    return lbp_sub(f, gp, u, O, K)
-    return f
-
-def f5_reduce(f, B, u, O, K):
-    if Polyn(f) == []:
-        return f
-
+    fp = f
     while True:
-        g = f
-        f = f5_single_reduction(f, B, u, O, K)
-        if g == f:
-            return f
+        f = fp
+        for g in B:
+            if Polyn(g) != []:
+                t = term_div(sdp_LT(Polyn(f), u, K), sdp_LT(Polyn(g), u, K), K)
+                if t is not None:
+                    gp = lbp_mul_term(g, t, u, O, K)
+                    if sig_cmp(Sign(gp), Sign(f), O) == -1: # TODO: do this test before computing term_div and lbp_mul_term
+                        #if not is_rewritable_or_comparable(gp, B, u, K): # this is slightly more expensive it seems
+                        fp = lbp_sub(f, gp, u, O, K)
+                        break
+        if f == fp:
+            return f        
 
 def f5b(F, u, O, K, gens='', verbose = False):
     """
@@ -245,6 +316,7 @@ def f5b(F, u, O, K, gens='', verbose = False):
             break
 
     B = [lbp(sig((0,) * (u + 1), i + 1), F[i], i + 1) for i in xrange(len(F))]
+    #CP = [critical_pair(B[i], B[j], u, O, K) for i in xrange(len(B)) for j in xrange(i+1, len(B))]
     CP = [critical_pair(B[i], B[j], u, O, K) for i in xrange(len(B)) for j in xrange(i+1, len(B))]
 
     k = len(B)
@@ -254,12 +326,11 @@ def f5b(F, u, O, K, gens='', verbose = False):
     while len(CP):
         cp = CP.pop()
 
-        uf = cp[0]
-        vg = cp[1]
-
-        if is_rewritable_or_comparable(uf, B, u, K):
-            continue
-        if is_rewritable_or_comparable(vg, B, u, K):
+        #if is_rewritable_or_comparable(cp[0], B, u, K):
+        #    continue
+        #if is_rewritable_or_comparable(cp[1], B, u, K):
+        #    continue
+        if cp_is_rewritable_or_comparable(cp, B, u, K):
             continue
 
         s = s_poly(cp, u, O, K)
@@ -270,11 +341,16 @@ def f5b(F, u, O, K, gens='', verbose = False):
 
         if Polyn(p) != []:
             CP.extend([critical_pair(p, q, u, O, K) for q in B if Polyn(q) != []])
-            CP.sort(lambda c, d: cp_cmp(c, d, O), reverse = True) 
+            CP.sort(lambda c, d: cp_cmp(c, d, u, O, K), reverse = True) 
 
             B.append(p)
+            B.sort(key = lambda f: O(sdp_LM(Polyn(f), u)), reverse = True)
+            #B = sorted(B, key = lambda f: O(sdp_LM(Polyn(f), u)), reverse = True) # sorting just by leading monomial seems to be more efficient than sorting by lbp
+            # those don't work very well:
             #B.sort(lambda x, y: lbp_cmp(x, y, O), reverse = True)
-            B = sorted(B, key = lambda f: O(sdp_LM(Polyn(f), u)), reverse = True) # sorting just by leading monomial seems to be more efficient than sorting by lbp
+            #B.sort(lambda x, y: sig_cmp(Sign(x), Sign(y), O), reverse = False)
+            #B.sort(lambda x, y: cmp(Sign(x)[1], Sign(y)[1]))
+
             k += 1
             
             # idea: when p is added to B, one can take a look at elements from CP,
@@ -284,12 +360,12 @@ def f5b(F, u, O, K, gens='', verbose = False):
             # "A New Incremental Algorithm for Computing Groebner Bases", Shuhong Gao, Yinhua Guan, Frank Volny IV
             indices = []
             for i, cp in enumerate(CP):
-                if is_rewritable_or_comparable(cp[0], [p], u, K):
-                    indices.append(i)
-                elif is_rewritable_or_comparable(cp[1], [p], u, K):
+                if cp_is_rewritable_or_comparable(cp, [p], u, K):
                     indices.append(i)
             for i in reversed(indices):
                 del CP[i]
+
+            #print(len(CP), len(B), "%d critical pairs removed" % len(indices))
         else:
             reductions_to_zero += 1
 
@@ -304,12 +380,12 @@ def f5b(F, u, O, K, gens='', verbose = False):
                 H.append(f)
 
     # test
-    #for i in xrange(len(H)):
-    #    for j in xrange(i + 1, len(H)):
-    #        s = sdp_spoly(H[i], H[j], u, O, K)
-    #        s = sdp_rem(s, H, u, O, K)
-    #        if s != []:
-    #            print(s)
+    for i in xrange(len(H)):
+        for j in xrange(i + 1, len(H)):
+            s = sdp_spoly(H[i], H[j], u, O, K)
+            s = sdp_rem(s, H, u, O, K)
+            if s != []:
+                print(s)
     
     #print("%d reductions to zero" % reductions_to_zero)
     
