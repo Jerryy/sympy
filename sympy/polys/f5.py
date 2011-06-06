@@ -292,11 +292,11 @@ def f5b(F, u, O, K, gens='', verbose = False):
             for i in reversed(indices):
                 del CP[i]
 
-            print(len(B), len(CP), "%d critical pairs removed" % len(indices))
+            #print(len(B), len(CP), "%d critical pairs removed" % len(indices))
         else:
             reductions_to_zero += 1
 
-    print("reduction")
+    #print("reduction")
 
     # reduce   
     F = [sdp_strip(sdp_monic(Polyn(g), K)) for g in B]
@@ -304,7 +304,7 @@ def f5b(F, u, O, K, gens='', verbose = False):
     F.sort(key = lambda f: O(sdp_LM(f, u)), reverse = False) # in order to compute katsura5
     H = []
     for i, f in enumerate(F):
-        print(i)
+        #print(i)
         if f != []:
             f = sdp_rem(f, H + F[i + 1:], u, O, K)
             if f != []:
