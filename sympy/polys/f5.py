@@ -233,7 +233,6 @@ def f5b(F, u, O, K, gens='', verbose = False):
 
     # reduce polynomials (like in mario pernici's algorithm) (Becker, Weispfennig, p. 203)
     B = F
-
     while True:
         F = B
         B = []
@@ -277,8 +276,6 @@ def f5b(F, u, O, K, gens='', verbose = False):
             CP.sort(lambda c, d: cp_cmp(c, d, O), reverse = True) 
 
             B.append(p)
-            #B.sort(lambda x, y: lbp_cmp(x, y, O), reverse = True)
-            #B = sorted(B, key = lambda f: O(sdp_LM(Polyn(f), u)), reverse = True)
             B.sort(key = lambda f: O(sdp_LM(Polyn(f), u)), reverse = True)
             k += 1
             
@@ -292,34 +289,15 @@ def f5b(F, u, O, K, gens='', verbose = False):
             for i in reversed(indices):
                 del CP[i]
 
-            print(len(B), len(CP), "%d critical pairs removed" % len(indices))
+            #print(len(B), len(CP), "%d critical pairs removed" % len(indices))
         else:
             reductions_to_zero += 1
 
-    print("reduction")
-
-    # reduce   
-    F = [sdp_strip(sdp_monic(Polyn(g), K)) for g in B]
-    F = [f for f in F if f != []]
-    F.sort(key = lambda f: O(sdp_LM(f, u)), reverse = False) # in order to compute katsura5
-    H = []
-    for i, f in enumerate(F):
-        print(i)
-        if f != []:
-            f = sdp_rem(f, H + F[i + 1:], u, O, K)
-            if f != []:
-                H.append(f)
-
-    # test
-    #for i in xrange(len(H)):
-    #    for j in xrange(i + 1, len(H)):
-    #        s = sdp_spoly(H[i], H[j], u, O, K)
-    #        s = sdp_rem(s, H, u, O, K)
-    #        if s != []:
-    #            print(s)
-    
     #print("%d reductions to zero" % reductions_to_zero)
-    
+
+    H = [sdp_strip(sdp_monic(Polyn(g), K)) for g in B]
+    H = red_groebner(H, u, O, K)
+
     return sorted(H, key = lambda f: O(sdp_LM(f, u)), reverse = True)
 
 def sdp_spoly(p1, p2, u, O, K):
@@ -335,4 +313,57 @@ def sdp_spoly(p1, p2, u, O, K):
     s2 = sdp_mul_term(p2, (m2, K.one), u, O, K)
     s = sdp_sub(s1, s2, u, O, K)
     return s
+
+def reduction(P, u, O, K):
+    """
+    Reduction algorithm from BeckerWeispfennig93, p. 203
+    """
+    
+    Q = P
+    reducible = True
+
+    while reducible:
+        reducible = False
+        for i, p in enumerate(Q):
+            r = sdp_rem(p, Q[:i] + Q[i + 1:], u, O, K)
+            if r != []:
+                del Q[i]
+                Q.append(r)
+                break
+
+    return [sdp_monic(p, K) for p in Q] 
+
+
+def red_groebner(G, u, O, K):
+    """
+    Compute reduced Groebner basis, from BeckerWeispfennig93, p. 216
+    """
+    F = G
+    H = []
+
+    reducible = False
+
+    while F:
+        reducible = True
+        f0 = F.pop()
+
+        for f in F + H:
+            if monomial_div(sdp_LM(f0, u), sdp_LM(f, u)) is not None:
+                reducible = False
+                break
+        
+        if reducible:
+            H.append(f0)
+
+    return reduction(H, u, O, K)
+        
+def is_groebner(G, u, O, K):
+    for i in xrange(len(G)):
+        for j in xrange(i + 1, len(G)):
+            s = sdp_spoly(G[i], G[j], u, O, K)
+            s = sdp_rem(s, G, u, O, K)
+            if s != []:
+                return False
+
+    return True
 
