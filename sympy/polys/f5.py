@@ -256,6 +256,7 @@ def f5b(F, u, O, K, gens='', verbose = False):
 
     while len(CP):
         cp = CP.pop()
+        #print(len(CP), len(B))
 
         uf = lbp(cp[0], [], Num(cp[2]))
         vg = lbp(cp[3], [], Num(cp[5]))
@@ -272,22 +273,35 @@ def f5b(F, u, O, K, gens='', verbose = False):
         p = lbp(Sign(p), Polyn(p), k + 1)
 
         if Polyn(p) != []:
-            CP.extend([critical_pair(p, q, u, O, K) for q in B if Polyn(q) != []])
-            CP.sort(lambda c, d: cp_cmp(c, d, O), reverse = True) 
-
-            B.append(p)
-            B.sort(key = lambda f: O(sdp_LM(Polyn(f), u)), reverse = True)
-            k += 1
-            
-            # remove useless critical pairs
+            # remove old useless critical pairs
             indices = []
             for i, cp in enumerate(CP):
                 if is_rewritable_or_comparable(lbp(cp[0], [], Num(cp[2])), [p], u, K):
                     indices.append(i)
                 elif is_rewritable_or_comparable(lbp(cp[3], [], Num(cp[5])), [p], u, K):
                     indices.append(i)
+
             for i in reversed(indices):
                 del CP[i]
+
+
+            # only add useful new critical pairs
+            for g in B:
+                if Polyn(g) != []:
+                    cp = critical_pair(p, g, u, O, K)
+                    if is_rewritable_or_comparable(lbp(cp[0], [], Num(cp[2])), [p], u, K):
+                        continue
+                    elif is_rewritable_or_comparable(lbp(cp[3], [], Num(cp[5])), [p], u, K):
+                        continue
+                    CP.append(cp)
+
+            # sort
+            CP.sort(lambda c, d: cp_cmp(c, d, O), reverse = True)
+
+            B.append(p)
+            B.sort(key = lambda f: O(sdp_LM(Polyn(f), u)), reverse = True)
+            k += 1
+
 
             #print(len(B), len(CP), "%d critical pairs removed" % len(indices))
         else:
