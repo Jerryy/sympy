@@ -61,9 +61,9 @@ def add_rule(r, k):
     Rules[r[1][1]].append((r[1][0], k))
 
 def rewritten(u, r, k):
-    L = Rules[r[1][1]]
+    L = Rules[r[1][1] - 1]
 
-    ut = monomial_mul(u, r[1][0])
+    ut = monomial_mul(u[0], r[1][0])
 
     for l in L:
         m = monomial_div(ut, l[0])
@@ -73,7 +73,7 @@ def rewritten(u, r, k):
 
 def rewritable(u, r, k):
     (v, rl) = rewritten(u, r, k)
-    return 
+    return G.index(rl) == k 
 
 def critical_pair(k, r1, r2, NF, u, O, K):
     #t = monomial_lcm(sdp_LM(poly(r1)), sdp_LM(poly(r2)))
@@ -95,6 +95,8 @@ def critical_pair(k, r1, r2, NF, u, O, K):
     if S(r1)[1] > k:
         return None
 
+    print([(monomial_mul(u1[0], S(r1)[0]), K.one)])
+    print(G)
     if NF([(monomial_mul(u1[0], S(r1)[0]), K.one)]) != [(monomial_mul(u1[0], S(r1)[0]), K.one)]:
         return None
 
@@ -118,9 +120,15 @@ def spol(P, NF, u, O, K):
     F.sort(lambda x, y: sig_cmp(S(x), S(y)))
     return F
 
+N = 0
+Rules = []
+G = []
 
 def incremental_f5(F, u, O, K):
-    global N, Rules, G
+    #global N
+    #global Rules
+    #global G
+
     N = len(F)
     Rules = [[]] * N
     G = [lbp(F[-1], sig((0,) * (u + 1), N))]
@@ -138,40 +146,41 @@ def f5(i, f, G, u, O, K):
     ri = lbp(f, sig((0,) * (u + 1), i))
    
     n = len(G)
-    NF = lambda f: sdp_rem(f, G[:n], u, O, K)
+    NF = lambda f: sdp_rem(f, [poly(g) for g in G[:n]], u, O, K)
 
     G.append(ri)
 
     P = [critical_pair(i, ri, r, NF, u, O, K) for r in G]
-    P.sort(key = lambda r: sum(sdp_LM(poly(r))))
+    P = filter(lambda p: p != None, P)
+    P.sort(key = lambda p: sum(p[0][0]))
 
     while P:
-        d = sum(sdp_LM(poly(P[0])))
+        d = sum(P[0][0][0])
 
         Pd = []
         indices = []
         for i, p in enumerate(P):
-            if sum(sdp_LM(poly(p))) == d:
+            if sum(p[0][0]) == d:
                 Pd.append(p)
                 indices.append(i)
         for i in reversed(indices):
             del P[i]
         
-        F = spol(Pd, u, O, K)
+        F = spol(Pd, NF, u, O, K)
         Rd = reduction(F, G, i, NF, u, O, K)
 
         for r in Rd:
             P.extend([critical_pair(r, p, i, NF, u, O, K) for p in G])
             G.append(r)
 
-        P.sort(key = lambda r: sum(sdp_LM(poly(r))))
+        P.sort(key = lambda p: sum(p[0][0]))
 
     return G
 
 def reduction(todo, Gi, k, NF, u, O, K):
     done = []
 
-    while F:
+    while todo:
         todo.sort(lambda f, g: sig_cmp(S(f), S(g)))
         h = todo.pop()
 
@@ -206,7 +215,7 @@ def top_reduction(r, Gi, k, NF, u, O, K):
 
     rp = is_reducible(r, Gi, k, NF, u, O, K)
 
-    if rp == []:
+    if rp == None:
         return lbp(sdp_monic(poly(r), K), r[1])
     else:
         r1 = rp
