@@ -88,6 +88,10 @@ def _normalform(f, G, gens, opt):
     return r
 """
 
+def gaussian_solve(A, b, K):
+    n = min(len(A), len(A[0]))
+
+
 def gaussian_elimination(A, b):
     M = A[:, :]
     n = min(M.rows, M.cols)
