@@ -3,12 +3,9 @@ Convert Groebner basis of ideal in two variables from one term order to another
 """
 # http://www-salsa.lip6.fr/~jcf/Papers/2010_MPRI5e.pdf
 
-from groebnertools import sdp_from_dict, sdp_rem
-from polytools import *
-from sympy.utilities import flatten
-from sympy.polys.monomialtools import monomial_key, monomial_div
-from sympy import symbols, solve
+from groebnertools import *
 
+"""
 def fglm(G, from_order, to_order, *gens, **args):
     try:
         polys, opt = parallel_poly_from_expr(G, *gens, **args)
@@ -88,3 +85,46 @@ def _normalform(f, G, gens, opt):
     r = Poly._from_dict(dict(r), opt).as_expr()
 
     return r
+"""
+
+def incr_tuple_at(t, i):
+    r = list(t)
+    r[i] += 1
+    return tuple(r)
+
+def fglm(F, from_order, to_order, u, K):
+    L = []
+    S = []
+    V = []
+    G = []
+    t = (0,) * (u + 1)
+
+    NF = lambda f: sdp_rem(f, F, u, monomial_key(from_order), K)
+
+    while True:
+        v = NF([(t, K.one)])
+        s = len(S)
+
+        # matrix
+        if :
+            p = sdp_sub([(t, K.one)], lc, u, monomial_key(from_order), K)
+            p = sdp_sort(p, monomial_key(to_order))
+            G.append(p)            
+        else:
+            S.append(t)
+            L.extend([incr_tuple_at(i) for i in xrange(u + 1)])
+            L.sort(key=lambda m: monomial_key(to_order)(m))
+
+            # remove multiples of LT(G)
+            indices = []
+            for i, l in enumerate(L):
+                if any([monomial_div(l, sdp_LM(g, u)) is not None for g in G]):
+                    indices.append(i)
+
+            for i in reversed(indices):
+                del L[i]
+
+        if L == []:
+            return G
+
+        t = L.pop()
