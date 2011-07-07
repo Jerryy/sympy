@@ -4,6 +4,7 @@ Convert Groebner basis of ideal in two variables from one term order to another
 # http://www-salsa.lip6.fr/~jcf/Papers/2010_MPRI5e.pdf
 
 from groebnertools import *
+from sympy import eye, zeros
 
 """
 def fglm(G, from_order, to_order, *gens, **args):
@@ -87,11 +88,53 @@ def _normalform(f, G, gens, opt):
     return r
 """
 
+def gaussian_elimination(A, b):
+    M = A[:, :]
+    n = min(M.rows, M.cols)
+    P = eye(max(M.rows, M.cols))
+    x = zeros((M.cols, 1))
+
+    # walk along the diagonal
+    for i in xrange(n):
+        if M[i, i] == 0:
+            # find pivot:
+            for j in xrange(i + 1, M.rows):
+                if M[j, i] != 0:
+                    M.row_swap(i, j)
+                    P.row_swap(i, j)
+                    b.row_swap(i, j)
+
+        if M[i, i] != 0:
+            # pivot not zero, eliminate below:
+            for j in xrange(i + 1, M.rows):
+                for k in xrange(i, M.cols):
+                    M[j, k] = M[j, k] * M[i, i] - M[j, i] * M[i, k]
+                b[j] = b[j] * M[i, i] - M[j, i] * b[i]
+                print("foo", b[j], M[j, i]/M[i, i])
+        
+        # no pivot found: simply continue
+    
+    M = M[0:n, 0:n]
+    #b = P * b later
+
+    # backsubstitution (don't care about zeros yet)
+    #for i in reversed(xrange(n)):
+    #    print(len(x[i + 1:n]), len(M[i, i + 1:n]))
+    #    x[i] = (b[i] - sum([z[0] * z[1] for z in zip(x[i:n], M[i, i:n])])) / M[i, i]
+    for i in reversed(xrange(n)):
+        x[i] = b[i]
+        x[i] -= sum([c[0] * c[1] for c in zip(x[i + 1:n], M[i, i + 1:n])])
+        x[i] /= M[i, i]
+
+    print(b)
+    print(P)
+    return P.transpose() * x
+
 def incr_tuple_at(t, i):
     r = list(t)
     r[i] += 1
     return tuple(r)
-
+"""
 def fglm(F, from_order, to_order, u, K):
     L = []
     S = []
@@ -128,3 +171,4 @@ def fglm(F, from_order, to_order, u, K):
             return G
 
         t = L.pop()
+"""
