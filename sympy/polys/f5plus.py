@@ -318,10 +318,6 @@ def top_reduction(r, G, k, NF, N, Rules, u, O, K):
             add_rule(rn, Rules)
             return [], [rn, r]
 
-<<<<<<< Updated upstream
-
-=======
->>>>>>> Stashed changes
 def is_groebner(G, u, O, K):
     for i in xrange(len(G)):
         for j in xrange(i + 1, len(G)):
