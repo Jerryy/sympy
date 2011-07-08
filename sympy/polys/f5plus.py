@@ -7,7 +7,7 @@ F5+ (although I'm starting with the classical F5)
 
 from sympy.polys.groebnertools import *
 
-
+from sympy.polys.monomialtools import monomial_gcd
 
 def _term_rr_div(a, b, K):
     """Division of two terms in over a ring. """
@@ -81,6 +81,26 @@ def is_rewritten(u, r, Rules):
     l = rewritten(u, r, Rules)
     return l != num(r)
         
+
+def faugere_criterion(u, r, G):
+    for g in G:
+        if S(g)[1] > S(r)[1]:
+            if monomial_div(monomial_mul(S(r)[0], u[0]), sdp_LM(g, u)) is not None:
+                return True
+    return False
+
+def rewritten_criterion(u, r, G):
+    for g in G:
+        if S(g)[1] == S(r)[1]:
+            num(g) > num(r):
+                if monomial_div(monomial_mul(S(r)[0], u[0]), S(g)[0]) is not None:
+                    return True
+    return False
+
+def buchberger_lcm_criterion(f, g, u, O):
+    if monomial_gcd(sdp_LM(f, u), sdp_LM(g, u)) == (0,) * (u + 1):
+        return True
+    return False
 
 def incremental_f5(F, u, O, K):
     N = [len(F)]
@@ -243,15 +263,18 @@ def is_reducible(r, G, k, NF, Rules, u, O, K):
     """
     #print("is_reducible called", len(G))
 
-    for j, rj in enumerate(G):
-        t = term_div(sdp_LT(poly(r), u, K), sdp_LT(poly(rj), u, K), K)
-        if t is not None:
-            f = sdp_mul_term([t], (S(rj)[0], K.one), u, O, K)
-            if NF(f) == f:
-                if not is_rewritten(t, rj, Rules):
-                    if sig_monomial_mul(S(rj), f[0][0]) != S(r):
-                        #print("is reducible")
-                        return rj
+    #for j, rj in enumerate(G):
+    #    t = term_div(sdp_LT(poly(r), u, K), sdp_LT(poly(rj), u, K), K)
+    #    if t is not None:
+    #        f = sdp_mul_term([t], (S(rj)[0], K.one), u, O, K)
+    #        if NF(f) == f:
+    #            if not is_rewritten(t, rj, Rules):
+    #                if sig_monomial_mul(S(rj), f[0][0]) != S(r):
+    #                    #print("is reducible")
+    #                    return rj
+    
+    b = 0
+    for 
 
     return None
     """
@@ -295,7 +318,10 @@ def top_reduction(r, G, k, NF, N, Rules, u, O, K):
             add_rule(rn, Rules)
             return [], [rn, r]
 
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
 def is_groebner(G, u, O, K):
     for i in xrange(len(G)):
         for j in xrange(i + 1, len(G)):
