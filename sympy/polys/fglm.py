@@ -160,22 +160,30 @@ def fglm(F, to_order, *gens, **args):
 
             opt.order = to_order
             R = reduced(G, gens, opt)
+            R.sort(key=lambda f: monomial_key(to_order)(f.LM(to_order)), reverse=True)
             if not opt.polys:
-                return [g.as_expr() for g in G]
+                return [g.as_expr() for g in R]
             else:
-                return G
+                return R
 
         t = L[0]
         del L[0]
 
 def reduced(G, gens, opt):
-    # opt.order = to_order!
+    F = G
+    H = []
+
+    while F:
+        f0 = F.pop()
+
+        if not any([monomial_div(f0.LM(opt.order), f.LM(opt.order)) is not None for f in F + H]):
+            H.append(f0)
 
     R = []
 
-    for i, g in enumerate(G):
-        g = _normalform(g, G[:i] + G[i + 1:], gens, opt)
-        if g != 0:
+    for i, g in enumerate(H):
+        g = _normalform(g, H[:i] + H[i + 1:], gens, opt)
+        if not g.is_zero:
             R.append(g)
 
     return R
