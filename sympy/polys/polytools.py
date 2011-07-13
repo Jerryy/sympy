@@ -1791,7 +1791,7 @@ class Poly(Expr):
         """
         return f.monoms(order)[-1]
 
-    def LT(f, order=None):
+    def LT(f, order=None, as_tuple=True):
         """
         Returns the leading term of ``f``.
 
@@ -1804,7 +1804,14 @@ class Poly(Expr):
         ((2, 0), 4)
 
         """
-        return f.terms(order)[0]
+        if as_tuple:
+            return f.terms(order)[0]
+        else:
+            lt = f.terms(order)[0]
+            m = lt[1]
+            for i, var in enumerate(f.gens):
+                m *= var**lt[0][i]
+            return m
 
     def ET(f, order=None):
         """

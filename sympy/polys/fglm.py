@@ -86,6 +86,19 @@ def _normalform(f, G, gens, opt):
    
     return r
 
+def normalform(f, G, order):
+    gens = f.gens
+
+    while True:
+        h = f
+        for g in G:
+            if monomial_div(f.LM(order), g.LM(order)) is not None:
+                f = f.as_expr() - f.LT(order, as_tuple=False)/g.LT(order, as_tuple=False) * g.as_expr()
+                f = Poly(f, gens)
+
+        if h == f:
+            return f
+
 def fglm(F, to_order, *gens, **args):
     """
     FGLM
@@ -118,8 +131,9 @@ def fglm(F, to_order, *gens, **args):
     while True:
         #print(len(L), len(G))
         #print(t)
-        v = _normalform(t, polys, gens, opt)
-        #print(t, "-->", v)
+        #v = _normalform(t, polys, gens, opt)
+        print(t.LM(opt.order))
+        v = normalform(t, polys, opt.order)
         
         _lambda = symbols("l:%d" % len(V))
         p = v - sum([Poly(_lambda[i], gens) * V[i] for i in xrange(len(V))])
@@ -130,7 +144,6 @@ def fglm(F, to_order, *gens, **args):
             sol = None
         else:
             sol = solve(coeffs, _lambda)
-
         
         if sol:
             p = t - sum([Poly(_lambda[i], gens) * S[i] for i in xrange(len(V))])
@@ -144,6 +157,7 @@ def fglm(F, to_order, *gens, **args):
             V.append(v)
 
             L.extend([t * Poly(var, gens) for var in gens])
+            print(L)
 
             indices = []
             for i, l in enumerate(L):
@@ -151,7 +165,7 @@ def fglm(F, to_order, *gens, **args):
                     indices.append(i)
             for i in reversed(indices):
                 del L[i]
-           
+
             L.sort(key=lambda f: monomial_key(to_order)(f.LM(to_order))) # from, to?
 
         if L == []:
