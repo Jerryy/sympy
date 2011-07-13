@@ -2,13 +2,19 @@ from groebnertools import *
 from sympy import symbols, solve, monomials, flatten
 from polytools import *
 
-def _normalform(f, G, gens, opt):
+def _normalform(f, G, gens, opt, current_domain):
     polys = []
 
     for poly in [f] + G:
         polys.append(sdp_from_dict(poly.rep.to_dict(), monomial_key(opt.order)))
 
-    r = sdp_rem(polys[0], polys[1:], len(gens) - 1, monomial_key(opt.order), opt.domain)
+    print(polys)
+
+    # annoying problem: the coefficients of polys[0] are polynomials in C, D.
+    # perhaps it would be better to write a normalform function for Polys instead
+    # of using the one for sdps.
+
+    r = sdp_rem(polys[0], polys[1:], len(gens) - 1, monomial_key(opt.order), current_domain)
     r = Poly._from_dict(dict(r), opt)
    
     return r
@@ -34,6 +40,8 @@ def _ratsimp_mod_prime(a, b, G, gens, opt, N=0, D=0):
     c, d = a, b
     steps = 0
 
+    domain = a.domain
+
     while N + D < a.total_degree() + b.total_degree():
         M1 = staircase(G, N, gens, opt.order)
         M2 = staircase(G, D, gens, opt.order)
@@ -45,7 +53,9 @@ def _ratsimp_mod_prime(a, b, G, gens, opt, N=0, D=0):
         c_hat = sum([Poly(C[i], gens) * M1[i] for i in xrange(len(M1))])
         d_hat = sum([Poly(D[i], gens) * M2[i] for i in xrange(len(M2))])
 
-        r = _normalform(a * d_hat - b * c_hat, G, gens, opt)
+        current_domain = domain[C + D]
+
+        r = _normalform(a * d_hat - b * c_hat, G, gens, opt, current_domain)
 
         S = r.coeffs()
 
