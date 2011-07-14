@@ -746,26 +746,22 @@ def sdp_spoly(p1, p2, u, O, K):
 def interreduce(F, u, O, K):
     """
     Interreduce set of generators
-
-    (why is this equivalent to REDUCTION in Becker, Weispfenning?)
     """
-    G = F[:]
-    
-    while True:
-        F = G[:]
-        G = []
+    P = F[:]
+    reducible = True
 
-        for i in range(len(F)):
-            p = F[i]
-            r = sdp_rem(p, F[:i], u, O, K)
+    while reducible:
+        reducible = False
 
-            if r:
-               G.append(sdp_monic(r, K))
-
-        if F == G:
-            break
-
-    return F
+        for i, p in enumerate(P):
+            h = sdp_rem(p, P[:i] + P[i + 1:], u, O, K)
+            if h != p:
+                reducible = True
+                del P[i]
+                if h != []:
+                    P.append(h)
+                break
+    return [sdp_monic(p, K) for p in P]       
 
 def critical_pair(f, g, u, O, K):
     if K.has_Field:
@@ -780,6 +776,54 @@ def critical_pair(f, g, u, O, K):
 
     return [sdp_mul_term(f, factor_f, u, O, K), sdp_mul_term(g, factor_g, u, O, K)]
 
+def monomial_coprime(m1, m2):
+    return sum([a * b for (a, b) in zip(m1, m2)]) == 0
+
+def update(G, B, h, u, O, K):
+    C = [(h, g) for g in G]
+    D = []
+
+    while C:
+        h, g1 = C.pop()
+        if monomial_coprime(sdp_LM(h, u), sdp_LM(g1, u)):
+            D.append((h, g1))
+            continue
+        
+        lcm1 = monomial_lcm(sdp_LM(h, u), sdp_LM(g1, u))
+        hlm = sdp_LM(h, u)
+        for (h, g2) in C + D:
+            if monomial_div(lcm1, monomial_lcm(hlm, sdp_LM(g2, u))) is not None:
+                break
+        D.append((h, g1))
+
+    E = []
+    while D:
+        h, g = D.pop()
+        if not monomial_coprime(sdp_LM(h, u), sdp_LM(g, u)):
+            E.append((h, g))
+
+    B_new = []
+    while B:
+        g1, g2 = B.pop()
+        if monomial_div(monomial_lcm(sdp_LM(g1, u), sdp_LM(g2, u)), sdp_LM(h, u)) is not None:
+            B_new.append((g1, g2))
+            continue
+        lcm12 = monomial_lcm(sdp_LM(g1, u), sdp_LM(g2, u))
+
+        if monomial_lcm(sdp_LM(g1, u), sdp_LM(h, u)) == lcm12 or monomial_lcm(sdp_LM(h, u), sdp_LM(g2, u)) == lcm12:
+            B_new.append((g1, g2))
+    
+    B_new.extend(E)
+    G_new = []
+            
+    while G:
+        g = G.pop()
+        if monomial_div(sdp_LM(g, u), sdp_LM(h, u)) is None:
+            G_new.append(g)
+
+    G_new.append(h)
+
+    return G_new, B_new
 
 def f4_experimental(F, u, O, K):
     """
@@ -791,8 +835,10 @@ def f4_experimental(F, u, O, K):
     if not K.has_Field:
         raise DomainError("can't compute a Groebner basis over %s" % K)
     
-    F = interreduce(F, u, O, K)
-    P = [(f, g) for f in F for g in F]
+    #F = interreduce(F, u, O, K)
+    #P = [(f, g) for f in F for g in F]
+    f = F.pop()
+    F, P = update(F, [], f, u, O, K)
 
     while P:
         d = min([sum(monomial_lcm(sdp_LM(f, u), sdp_LM(g, u))) for (f, g) in P])
@@ -812,16 +858,27 @@ def f4_experimental(F, u, O, K):
         #f, g = P.pop()
         #H = critical_pair(f, g, u, O, K)
 
-        H = interreduce(H + F, u, O, K)
+        H = interreduce(H + F, u, O, K)#
 
         for h in H:
             if all([monomial_div(sdp_LM(h, u), sdp_LM(g, u)) is None for g in F]):
-                P.extend([(h, g) for g in F])
+                #P.extend([(h, g) for g in F])
+                F, P = update(F, P, h, u, O, K)
 
-        F = H
-
+        #F = H
+    print(is_groebner(F, u, O, K))
     return sorted(red_groebner(F, u, O, K), key=lambda f: O(sdp_LM(f, u)), reverse=True)
 
+
+def is_groebner(G, u, O, K):
+    for i in xrange(len(G)):
+        for j in xrange(i + 1, len(G)):
+            s = sdp_spoly(G[i], G[j], u, O, K)
+            s = sdp_rem(s, G, u, O, K)
+            if s != []:
+                return False
+
+    return True
 
 def red_groebner(G, u, O, K):
     """
