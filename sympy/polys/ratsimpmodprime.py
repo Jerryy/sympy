@@ -4,7 +4,8 @@ from polytools import *
 from sympy import expand
 
 def normalform_expr(f, G, order):
-    while True:
+    r = 0
+    while f:
         for g in G:
             ltf = f.as_ordered_terms(order)[0]
             ltg = g.as_ordered_terms(order)[0]
@@ -13,8 +14,9 @@ def normalform_expr(f, G, order):
                 f = expand(f - (ltf / ltg) * g)
                 break
         else:
-            break
-    return f
+            r = r + f.as_ordered_terms(order)[0]
+            f = f - f.as_ordered_terms(order)[0]
+    return r
 
 def staircase(G, n, gens, order):
     M = list(monomials(gens, n))
@@ -46,19 +48,20 @@ def ratsimp_mod_prime(a, b, G, gens, order, N=0, D=0):
         M2 = staircase(G, D, gens, order)
    
 
-        C = symbols("c:%d" % len(M1))
-        D = symbols("d:%d" % len(M2))
+        Cs = symbols("c:%d" % len(M1))
+        Ds = symbols("d:%d" % len(M2))
 
-        c_hat = sum([C[i] * M1[i] for i in xrange(len(M1))])
-        d_hat = sum([D[i] * M2[i] for i in xrange(len(M2))])
+        c_hat = sum([Cs[i] * M1[i] for i in xrange(len(M1))])
+        d_hat = sum([Ds[i] * M2[i] for i in xrange(len(M2))])
 
-        r = normalform_expr(a * d_hat - b * c_hat, G, order)
+        r = normalform_expr(expand(a * d_hat - b * c_hat), G, order)
 
         S = Poly(r, gens).coeffs()
+        print(S)
 
-        sol = solve(S, C + D)
+        sol = solve(S, Cs + Ds)
 
-        if sol is not None:
+        if sol is not None and not all([s == 0 for s in sol.itervalues()]):
             c = c_hat.subs(sol)
             d = d_hat.subs(sol)
             break
@@ -68,6 +71,7 @@ def ratsimp_mod_prime(a, b, G, gens, order, N=0, D=0):
         steps += 1
 
     if steps > 0:
+        print(c, d)
         c, d = ratsimp_mod_prime(c, d, G, order, N, D - steps)
         c, d = ratsimp_mod_prime(c, d, G, order, N - steps, D)
 
