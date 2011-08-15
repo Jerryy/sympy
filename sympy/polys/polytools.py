@@ -199,9 +199,6 @@ class Poly(Expr):
             else:
                 rep = rep.reorder(*gens)
 
-        if 'order' in opt:
-            rep = rep.set_order(order)
-
         if 'domain' in opt and domain:
             rep = rep.set_domain(domain)
         elif field is True:
@@ -2970,8 +2967,7 @@ class Poly(Expr):
 
         """
         if f.is_multivariate:
-            raise MultivariatePolynomialError("can't compute numerical roots "
-                                              "of %s" % f)
+            raise MultivariatePolynomialError("can't compute numerical roots of %s" % f)
 
         if f.degree() <= 0:
             return []
@@ -4912,9 +4908,22 @@ def _symbolic_factor_list(expr, opt, method):
 
                 if exp is S.One:
                     factors.extend(_factors)
+                elif exp.is_integer or len(_factors) == 1:
+                    factors.extend([ (f, k*exp) for f, k in _factors ])
                 else:
-                    for factor, k in _factors:
-                        factors.append((factor, k*exp))
+                    other = []
+
+                    for f, k in _factors:
+                        if f.as_expr().is_positive:
+                            factors.append((f, k*exp))
+                        else:
+                            other.append((f, k))
+
+                    if len(other) == 1:
+                        f, k = other[0]
+                        factors.append((f, k*exp))
+                    else:
+                        factors.append((_factors_product(other), exp))
 
     return coeff, factors
 
@@ -4945,6 +4954,14 @@ def _generic_factor_list(expr, gens, args, method):
 
         if fq and not opt.frac:
             raise PolynomialError("a polynomial expected, got %s" % expr)
+
+        _opt = opt.clone(dict(expand=True))
+
+        for factors in (fp, fq):
+            for i, (f, k) in enumerate(factors):
+                if not f.is_Poly:
+                    f, _ = _poly_from_expr(f, _opt)
+                    factors[i] = (f, k)
 
         fp = _sorted_factors(fp, method)
         fq = _sorted_factors(fq, method)
