@@ -1,8 +1,9 @@
 """Solvers of systems of polynomial equations. """
 
-from sympy.polys import Poly, groebner, roots
+from sympy.polys import Poly, groebner, roots, fglm
 from sympy.polys.polytools import parallel_poly_from_expr
 from sympy.polys.polyerrors import ComputationFailed, PolificationFailed
+from sympy.polys.domains.groundtypes import HAS_GMPY
 from sympy.utilities import postfixes
 from sympy.simplify import rcollect
 from sympy.core import S
@@ -132,7 +133,11 @@ def solve_generic(polys, opt):
             zeros = roots(system[0], gens[-1]).keys()
             return [ (zero,) for zero in zeros ]
 
-        basis = groebner(system, gens, polys=True)
+        if HAS_GMPY:
+            basis = groebner(system, gens, order='grevlex', polys=True)
+            basis = fglm(basis, 'grevlex', gens, polys=True)  # This also checks if basis is zero-dimensional
+        else:
+            basis = groebner(system, gens, polys=True)
 
         if len(basis) == 1 and basis[0].is_ground:
             if not entry:
@@ -209,7 +214,11 @@ def solve_triangulated(polys, *gens, **args):
     Algebraic Algorithms and Error-Correcting Codes, LNCS 356 247--257, 1989
 
     """
-    G = groebner(polys, gens, polys=True)
+    if HAS_GMPY:
+        G = groebner(polys, gens, order='grevlex', polys=True)
+        G = fglm(G, 'grevlex', gens, polys=True)
+    else:
+        G = groebner(polys, gens, polys=True)
     G = list(reversed(G))
 
     domain = args.get('domain')
