@@ -75,6 +75,8 @@ class Basic(object):
     @deprecated
     def is_Real(self):  # pragma: no cover
         """Deprecated alias for ``is_Float``"""
+        # When this is removed, remove the piece of code disabling the warning
+        # from test_pickling.py
         return self.is_Float
 
     def __new__(cls, *args, **assumptions):
@@ -605,10 +607,11 @@ class Basic(object):
         >>> (x*y).args[1]
         y
 
-        Note for developers: Never use self._args, always use self.args.
-        Only when you are creating your own new function, use _args
-        in the __new__. Don't override .args() from Basic (so that it's
-        easy to change the interface in the future if needed).
+        ** Developer Notes **
+            Never use self._args, always use self.args.
+            Only use _args in __new__ when creating a new function.
+            Don't override .args() from Basic (so that it's easy to
+            change the interface in the future if needed).
         """
         return self._args
 
